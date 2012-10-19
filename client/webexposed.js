@@ -1,7 +1,16 @@
+/**
+ * Adds a column that corresponds to an attribute of a bug, including UI
+ * elements to modify that attribute.
+ * @param {string} name This is the name of the column to add. Corresponds
+ *     to the name of an attribute in the model (eg 'hidden' or 'crbug id').
+ * @param {string} type This is the {@code HTML} {@code input} type for the
+ *     column. (eg {@code checkbox} for 'hidden')
+ */
+
 function addColumn(name,type) {
 
-	// CREATE COLUMNS
-	// Bugzilla buglist tables contain at most 100 bugs per table,
+	// Create cols for matching CSS to columns
+	// Note: Bugzilla buglist tables contain at most 100 bugs per table,
 	// so there are multiple tables & colgorups per page with >100 bugs.
 	var colGroups = document.getElementsByTagName('colgroup');
 	for (var i = colGroups.length - 1; i >= 0; i--) {
@@ -10,7 +19,7 @@ function addColumn(name,type) {
 		colGroups[i].appendChild(col);
 	}
 
-	// CREATE HEADERS
+	// Create headers from the attribute's name
 	var headerLists = document.getElementsByClassName('bz_buglist_header');
 	for (var i = headerLists.length - 1; i >= 0; i--) {
 		var th = document.createElement('th');
@@ -19,8 +28,9 @@ function addColumn(name,type) {
 		headerLists[i].appendChild(th);
 	}
 
-	// ADD INPUT ELEMENTS
+	// Add UI elements to modify the attribut
 	var rows = document.getElementsByClassName('bz_bugitem');
+
 	for (var i = rows.length - 1; i >= 0; i--) {
 		var td = document.createElement('td');
 		var input;
@@ -33,7 +43,7 @@ function addColumn(name,type) {
 			input = document.createElement('input');
 			input.type = type;
 			// Bug ids are typically <=7 digits.
-			if (name==='crbug id') {
+			if (name === 'crbug id') {
 				input.size = 7;
 			}
 		}
