@@ -1,6 +1,11 @@
 /**
- * Adds a column that corresponds to an attribute of a bug, including UI
- * elements to modify that attribute.
+ * @fileoverview Logic for WebExposed Chrome extension. Allows users to 
+ * organize WebKit bugs labeled with the "WebExposed" keyword.
+ * @author meh@chromium.org (Max Heinritz)
+ */
+
+/**
+ * Adds a column corresponding an attribute of a bug.
  * @param {string} name This is the name of the column to add. Corresponds
  *     to the name of an attribute in the model (eg 'hidden' or 'crbug id').
  * @param {string} type This is the {@code HTML} {@code input} type for the
@@ -28,7 +33,19 @@ function addColumn(name,type) {
 		headerLists[i].appendChild(th);
 	}
 
-	// Add UI elements to modify the attribut
+	addUIElement(name,type);
+}
+
+/**
+ * Adds a UI element on each row that corresponds to an attribute of the bug
+ * on that row. Different attributes require different input types.
+ * @param {string} name This is the name of the column to add. Corresponds
+ *     to the name of an attribute in the model (eg 'hidden' or 'crbug id').
+ * @param {string} type This is the {@code HTML} {@code input} type for the
+ *     attribute. (eg {@code checkbox} for 'hidden')
+ */
+function addUIElement(name,type) {
+	// Add UI elements to modify the attribute
 	var rows = document.getElementsByClassName('bz_bugitem');
 
 	for (var i = rows.length - 1; i >= 0; i--) {
