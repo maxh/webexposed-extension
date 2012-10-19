@@ -1,0 +1,1 @@
+document.getElementsByClassName('.bz_bugitem');
