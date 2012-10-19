@@ -1,0 +1,1 @@
+$('.bz_bugitem').css('color','red');
