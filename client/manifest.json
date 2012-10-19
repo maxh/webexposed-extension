@@ -9,8 +9,8 @@
   "content_scripts": [
     {
       "matches": ["https://bugs.webkit.org/buglist.cgi?keywords=WebExposed"],
-      "js": ["WebExposed.js"],
-      "css": ["WebExposed.css"]
+      "js": ["webexposed.js"],
+      "css": ["webexposed.css"]
     }
   ]
 }
