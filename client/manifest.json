@@ -8,8 +8,9 @@
   ],
   "content_scripts": [
     {
-      // Note: we cannot include the query parameter in the 'matches' string
-      // because of crbug.com/57423
+      // Note: we cannot include the query parameter "?keywords=WebExposed" in
+      // the 'matches' string because of crbug.com/57423. We test for it in 
+      // the script.
       "matches": ["https://bugs.webkit.org/buglist.cgi*"],
       "js": ["webexposed.js"],
       "css": ["webexposed.css"]

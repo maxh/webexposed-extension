@@ -1,1 +1,8 @@
-[class^='we_'] { text-transform: capitalize; }
+[class^='we_'] { 
+	text-transform: capitalize;
+	background-color: rgba(144,238,144,.2);
+}
+
+input#we_button { 
+	float: right;
+}
