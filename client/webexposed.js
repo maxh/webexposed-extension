@@ -21,11 +21,11 @@ function addColumn(name,type) {
 	var colGroups = document.getElementsByTagName('colgroup');
   var safeName = name.replace(/ _/g,"-");
 
-	for (var i = colGroups.length - 1; i >= 0; i--) {
-		var col = document.createElement('col');
-		col.className = 'webexposed_colgroup ' + safeName;
-		colGroups[i].appendChild(col);
-	}
+  for (var i = colGroups.length - 1; i >= 0; i--) {
+    var col = document.createElement('col');
+    col.className = 'webexposed_colgroup ' + safeName;
+    colGroups[i].appendChild(col);
+  }
 
 	// Create headers from the attribute's name
 	var headerLists = document.getElementsByClassName('bz_buglist_header');
@@ -49,51 +49,51 @@ function addColumn(name,type) {
  */
 function addUIElementToAllRows(name,type) {
 	// Add UI elements to modify the attribute
-	var rows = document.getElementsByClassName('bz_bugitem');
+  var rows = document.getElementsByClassName('bz_bugitem');
   var safeName = name.replace(/ _/g,"-");
 
-	for (var i = rows.length - 1; i >= 0; i--) {
-		// Extract the bug id from the link in the first cell in this row
-		var bugId = rows[i].cells[0].getElementsByTagName('a')[0].innerHTML;
+  for (var i = rows.length - 1; i >= 0; i--) {
+    // Extract the bug id from the link in the first cell in this row
+    var bugId = rows[i].cells[0].getElementsByTagName('a')[0].innerHTML;
 
-		var td = document.createElement('td');
-		td.className = 'webexposed_column ' + safeName;
-		
-		var input;
+    var td = document.createElement('td');
+    td.className = 'webexposed_column ' + safeName;
 
-		// Most inputs will be input elements, except for textareas.
-		if (type === 'textarea') {
-			input = document.createElement('textarea');
-		} else {
-			input = document.createElement('input');
-			input.type = type;
-			// Bug ids are typically <=7 digits.
-			if (name === 'crbug id') {
-				input.size = 7;
-			}
-		}
+    var input;
 
-		input.name = name;
+    // Most inputs will be input elements, except for textareas.
+    if (type === 'textarea') {
+      input = document.createElement('textarea');
+    } else {
+      input = document.createElement('input');
+      input.type = type;
+      // Bug ids are typically <=7 digits.
+      if (name === 'crbug id') {
+        input.size = 7;
+      }
+    }
+
+    input.name = name;
     input.className = 'webexposed_input ' + bugId;
 
-		td.appendChild(input);
-		rows[i].appendChild(td);
-	}
+    td.appendChild(input);
+    rows[i].appendChild(td);
+  }
 }
 
 /**
  * Adds a save button.
  */
 function addSaveButton() {
-	var header = document.getElementById('header');
-	var button = document.createElement('input');
-	button.type = 'submit';
-	button.value = 'Save WebExposed Attributes';
-	button.id = 'webexposed_button';
+  var header = document.getElementById('header');
+  var button = document.createElement('input');
+  button.type = 'submit';
+  button.value = 'Save WebExposed Attributes';
+  button.id = 'webexposed_button';
   button.addEventListener('click',saveChanges);
 
   // Add the button to the header
-	header.appendChild(button);
+  header.appendChild(button);
 }
 
 /**
