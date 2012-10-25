@@ -1,11 +1,21 @@
-<html>
-<head>
-  <title>Options for WebExposed Extension</title>
-  <script src="options.js"></script>
-</head>
-<body>
-  <label>Secret Word: </label>
-  <input type="password" id="secretword">
-  <button id="btnSaveSecretWord">Save</button>
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Options for WebExposed Extension</title>
+    <style>
+      ::-webkit-input-placeholder {
+        line-height: 16px;
+        font-size: 9px;
+      }
+    </style>
+  </head>
+  <body>
+    <label>Secret Word: </label>
+    <input type="password" id="secretword" autofocus>
+    <button id="savebutton">Save</button>
+
+    <!-- Load the script required to modify this page -->
+    <script src="options.js"></script>
+  </body>
 </html>
