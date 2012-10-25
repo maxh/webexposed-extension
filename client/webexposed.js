@@ -4,6 +4,8 @@
  * @author meh@chromium.org (Max Heinritz)
  */
 
+var storage = chrome.storage.local;
+
 /**
  * Adds a column corresponding an attribute of a bug.
  * @param {string} name This is the name of the column to add. Corresponds
@@ -11,9 +13,6 @@
  * @param {string} type This is the {@code HTML} {@code input} type for the
  *     column. (eg {@code checkbox} for 'hidden')
  */
-
-var storage = chrome.storage.local;
-
 function addColumn(name,type) {
   // Create cols for matching CSS to columns
   // Note: Bugzilla buglist tables contain at most 100 bugs per table,
