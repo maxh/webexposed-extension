@@ -174,11 +174,11 @@ function constructJsonUpdate() {
 
 // only run the extension on the WebExposed bug list
 if (document.URL.indexOf('keywords=WebExposed') != -1) {
-	addSaveButton();
-	addColumn('hidden','checkbox');
-	addColumn('important','checkbox');
-	addColumn('crbug id','text');
-	addColumn('comment','textarea');
+  addSaveButton();
+  addColumn('hidden','checkbox');
+  addColumn('important','checkbox');
+  addColumn('crbug id','text');
+  addColumn('comment','textarea');
 }
 
 // TODO: Only allow one of hidden/important to be selected at a time
