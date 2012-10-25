@@ -1,8 +1,9 @@
-[class^='we_'] { 
+[class^='webexposed_'] { 
 	text-transform: capitalize;
-	background-color: rgba(144,238,144,.2);
+	background-color: rgba(175,238,238,0.2);
 }
 
-input#we_button { 
+input#webexposed_button { 
+  background-color: rgba(175,238,238,0.2);
 	float: right;
 }
