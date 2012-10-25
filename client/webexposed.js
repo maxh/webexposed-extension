@@ -15,28 +15,28 @@
 var storage = chrome.storage.local;
 
 function addColumn(name,type) {
-// Create cols for matching CSS to columns
-// Note: Bugzilla buglist tables contain at most 100 bugs per table,
-// so there are multiple tables & colgorups per page with >100 bugs.
-var colGroups = document.getElementsByTagName('colgroup');
-var safeName = name.replace(/ _/g,"-");
+  // Create cols for matching CSS to columns
+  // Note: Bugzilla buglist tables contain at most 100 bugs per table,
+  // so there are multiple tables & colgorups per page with >100 bugs.
+  var colGroups = document.getElementsByTagName('colgroup');
+  var safeName = name.replace(/ _/g,"-");
 
-for (var i = colGroups.length - 1; i >= 0; i--) {
-  var col = document.createElement('col');
-  col.className = 'webexposed_colgroup ' + safeName;
-  colGroups[i].appendChild(col);
-}
+  for (var i = colGroups.length - 1; i >= 0; i--) {
+    var col = document.createElement('col');
+    col.className = 'webexposed_colgroup ' + safeName;
+    colGroups[i].appendChild(col);
+  }
 
-// Create headers from the attribute's name
-var headerLists = document.getElementsByClassName('bz_buglist_header');
-for (var i = headerLists.length - 1; i >= 0; i--) {
-  var th = document.createElement('th');
-  th.className = 'webexposed_header ' + safeName;
-  th.innerHTML = name;
-  headerLists[i].appendChild(th);
-}
+  // Create headers from the attribute's name
+  var headerLists = document.getElementsByClassName('bz_buglist_header');
+  for (var i = headerLists.length - 1; i >= 0; i--) {
+    var th = document.createElement('th');
+    th.className = 'webexposed_header ' + safeName;
+    th.innerHTML = name;
+    headerLists[i].appendChild(th);
+  }
 
-addUIElementToAllRows(name,type);
+  addUIElementToAllRows(name,type);
 }
 
 /**
