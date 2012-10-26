@@ -1,6 +1,9 @@
-[class^='webexposed_'] { 
-	text-transform: capitalize;
+[class^='webexposed'] { 
 	background-color: rgba(175,238,238,0.2);
+}
+
+.webexposed.header {
+  text-transform: capitalize;
 }
 
 input#webexposed_button { 
