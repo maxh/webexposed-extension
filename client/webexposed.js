@@ -4,7 +4,7 @@
  * @author meh@chromium.org (Max Heinritz)
  */
 
-// Note: this extension script is injected into page's existing script.
+// Note: this extension script is injected into page's own script.
 // To avoid conflating namespaces, we wrap the whole script in a self-executing 
 // anonymous function.
 (function() {
@@ -144,7 +144,7 @@
    */
   function sendUpdate() {
     // Check if we have updates to send. If not, don't send the update.
-    if ( Object.keys(update).length === 0 )
+    if (Object.keys(update).length === 0)
       return;
 
     // Load secret word using the Chrome extension storage API.
@@ -155,7 +155,7 @@
       }
       else {
         update = {};
-        alert('update');
+        console.log('update');
         // TODO: Send POST request to server
         // TODO: Disable save button once changes are made
       }
@@ -204,7 +204,28 @@
       }
     }
   }
-  
+
+  /**
+   * Retrieves data from server after the user has been idle for the 
+   * SYNC_INTERVAL (in minutes).
+   */
+  function syncMonitor() {
+    var t;
+    document.onkeypress = resetTimer;
+    document.onmousemove = resetTimer;
+    document.onkeypress = resetTimer;
+
+    function sync() {
+      console.log("sync");
+      // TODO: request data from server
+    }
+
+    function resetTimer() {
+      clearTimeout(t);
+      t = setTimeout(sync, SYNC_INTERVAL*1000*60);
+    }
+  };
+
   // only run the extension on the WebExposed bug list
   if (document.URL.indexOf('keywords=WebExposed') != -1) {
     addSaveButton();
@@ -213,8 +234,7 @@
     addColumn('crbugId','text');
     addColumn('comment','textarea');
     setInterval(sendUpdate, SEND_UPDATE_INTERVAL*1000);
-    //TODO:Dectect idle time and reload JSON
-    //setInterval(loadJsonUpdate, SYNC_INTERVAL*60*1000);
+    syncMonitor();
   }
 })();
 // TODO: Only allow one of hidden/important to be selected at a time
