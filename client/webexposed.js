@@ -4,6 +4,9 @@
  * @author meh@chromium.org (Max Heinritz)
  */
 
+// Note: this extension script is injected into page's existing script.
+// To avoid conflating namespaces, we wrap the whole script in a self-executing 
+// anonymous function.
 (function() {
   var storage = chrome.storage.local;
   // Stores incremental updates to the input elements.
@@ -140,8 +143,8 @@
    * Save the changes to the bug states to the AppEngine backend.
    */
   function sendUpdate() {
-    // Check if we have updates to send. If not, quit.
-    if (update.length=0)
+    // Check if we have updates to send. If not, don't send the update.
+    if ( Object.keys(update).length === 0 )
       return;
 
     // Load secret word using the Chrome extension storage API.
@@ -151,6 +154,8 @@
         alert('Please enter the secret word on the options page.');
       }
       else {
+        update = {};
+        alert('update');
         // TODO: Send POST request to server
         // TODO: Disable save button once changes are made
       }
@@ -205,7 +210,7 @@
     addSaveButton();
     addColumn('hidden','checkbox');
     addColumn('important','checkbox');
-    addColumn('crbug_id','text');
+    addColumn('crbugId','text');
     addColumn('comment','textarea');
     setInterval(sendUpdate, SEND_UPDATE_INTERVAL*1000);
     //TODO:Dectect idle time and reload JSON
