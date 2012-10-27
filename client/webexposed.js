@@ -9,20 +9,26 @@
 // anonymous function.
 (function() {
   var storage = chrome.storage.local;
-  // Stores incremental updates to the input elements.
+  
+  var loading = false;
+
+  // Stores incremental updates to the input elements before they are sent to
+  // the server.
   var update = {};
+
+  // Constants
+  var PRIORITIES = ['hidden','normal','important'];
   var SYNC_INTERVAL = 15; // in minutes
   var SEND_UPDATE_INTERVAL = 2; // in seconds
 
   /**
    * Adds a column corresponding an attribute of a bug.
-   * @param {string} name This is the name of the column to add. Corresponds
-   *     to the name of an attribute in the model (eg 'hidden' or 'crbug id').
+   * @param {string} name This is the name of the column to add. Typically 
+   * corresponds to the name of an attribute in the model (eg 'crbug id').
    * @param {string} type This is the {@code HTML} {@code input} type for the
    *     column. (eg {@code checkbox} for 'hidden')
    */
   function addColumn(name,type) {
-    // Create cols for matching CSS to columns
     // Note: Bugzilla buglist tables contain at most 100 bugs per table,
     // so there are multiple tables & colgroups per page with >100 bugs.
     var colGroups = document.getElementsByTagName('colgroup');
@@ -83,7 +89,7 @@
   
       input.id = bugId + ' ' + name;      
       input.name = name;
-      input.className = 'webexposed input ' + bugId;
+      input.className = 'webexposed ' + type + ' ' + bugId;
 
       td.appendChild(input);
       rows[i].appendChild(td);
@@ -91,39 +97,30 @@
   }
 
   /**
-   * Adds a save button.
-   */
-  function addSaveButton() {
-    var header = document.getElementById('header');
-    var button = document.createElement('input');
-    button.type = 'submit';
-    button.value = 'Save WebExposed Attributes';
-    button.id = 'webexposed_button';
-    button.class = 'webexposed button';
-    button.disabled = true;
-
-    button.addEventListener('click',sendUpdate);
-
-    // Add the button to the header
-    header.appendChild(button);
-  }
-
-  /**
    * Saves changes to input elements to a local array in preparation for POST to
-   * server.
+   * server. Called when a UI element changes.
    */
   function storeUpdate() {
-    var bugId = this.id.split(' ',1);
-    var name = this.name;
+    var bugId = this.id.split(' ')[0]; // ids are like '{id} {name}'
+    var inputName = this.id.split(' ')[1];
     var value = '';
+    var name = '';
 
     // For each checkbox, the value is a boolean (where true means checked).
-    if (this.type == 'checkbox')
-      value = this.checked;
+    if (this.type == 'checkbox') {
+      name = 'priority';
+      value = this.checked ? this.name : 'normal';
+      togglePriorities();
     // For other types of input (right now only textarea and text), the value
     // is the content in the input element.
-    else
+    } else {
+      name = this.name;
       value = this.value;
+    }
+
+    // If this storeUpdate was triggered by a programmatic onchange event while
+    // we load server data, then we should not send changes back to the server
+    if (loading) return;
 
     // Create an entry in the update for this bug if none exists.
     if (typeof (update[bugId] == 'undefined'))
@@ -133,10 +130,20 @@
     update[bugId][name] = value;
 
     // Write the update to the console, for reference.
+    console.log('storing update');
     console.log(JSON.stringify(update[bugId]));
     console.log(JSON.stringify(update));
 
     document.getElementById('webexposed_button').disabled = false;
+
+    function togglePriorities() {
+      // disable all other priority checkboxes if this one is now checked
+      console.log('toggling priorities');
+      for (p in PRIORITIES)
+        if (inputName !== PRIORITIES[p] && PRIORITIES[p] !== 'normal')
+          document.getElementById(bugId + ' ' + PRIORITIES[p]).disabled = 
+            (value !== 'normal');
+    }
   }
 
   /**
@@ -155,7 +162,7 @@
       }
       else {
         update = {};
-        console.log('update');
+        console.log('sending update');
         // TODO: Send POST request to server
         // TODO: Disable save button once changes are made
       }
@@ -163,20 +170,29 @@
   }
 
   /**
-   * Downloads updates from the server and adjusts UI accordingly.
+   * Retrieves update from the server and adjusts UI accordingly.
    */
-  function loadJsonUpdate() {
+  function loadUpdate() {
+    loading = true;
+
+    console.log('loading update');
     var rows = document.getElementsByClassName('bz_bugitem');
 
-    jsonUpdate = []; // TODO: make request to App Engine Backend
+    jsonUpdate = []; // TODO: make request to App Engine Backend here
 
     // Examine each bug and find its entry in the JSON object, if any
     for (var i = rows.length - 1; i >= 0; i--) {
       // Extract the bug id from the link in the first cell in this row
       var bugId = rows[i].cells[0].getElementsByTagName('a')[0].innerHTML;
       
-      // If the update has no information on this bug, we can skip it
-      if (typeof (jsonUpdate[bugId]) == 'undefined')
+      // Assume that the current information is wrong if it's not consistent
+      // with the server; clear it and replace with the server's information
+      // TODO: only clear unchanged values; this may flash the changes 
+      // to UI elements.
+      clearInputElements(bugId);
+
+      // If the update has no information on this bug, we clear its inputs
+      if (typeof (jsonUpdate[bugId]) == 'undefined') 
         continue;
 
       var updatesForThisBug = jsonUpdate[bugId];
@@ -190,18 +206,31 @@
       for (var j = 0; j < updatesForThisBug.length; j++) {
         var fieldName = updatesForThisBug[j][0];
         var fieldValue = updatesForThisBug[j][1];
-        var inputElement = document.getElementById(fieldName + ' ' + bugId);
 
-        // For each checkbox, the value is a boolean (where true means checked)
-        if (inputElement.tagName === 'INPUT' 
-          && inputElement.type === 'checkbox')
-            inputElement.checked = fieldValue;
+        if (fieldName = 'priority')
+          document.getElementById(fieldValue + ' ' + bugId).checked = true;
         // For other types of input (right now only textarea and text), the 
         // value is the content in the input element.
         else
-          if(inputElement.value)
-            inputElement.value = fieldValue;
+          document.getElementById(fieldName + ' ' + bugId).value = fieldValue;
       }
+    }
+
+    loading = false;
+
+    /**
+     * Clears inputs for a bug with no updates.
+     */
+    function clearInputElements(bugId) {
+      elements = document.getElementsByClassName(bugId);
+      for (var i = 0; i < elements.length; i++)
+        // For each checkbox, the value is a boolean (false => unchecked)
+        if (elements[i].tagName === 'INPUT' && elements[i].type === 'checkbox')
+            elements[i].checked = false;
+        // For other types of input (right now only textarea and text), clear 
+        // the content in the input element.
+        else
+          elements[i].value = '';
     }
   }
 
@@ -209,15 +238,15 @@
    * Retrieves data from server after the user has been idle for the 
    * SYNC_INTERVAL (in minutes).
    */
-  function syncMonitor() {
+  function syncTimer() {
     var t;
     document.onkeypress = resetTimer;
     document.onmousemove = resetTimer;
     document.onkeypress = resetTimer;
 
     function sync() {
-      console.log("sync");
-      // TODO: request data from server
+      console.log("syncing");
+      loadUpdate();
     }
 
     function resetTimer() {
@@ -228,13 +257,21 @@
 
   // only run the extension on the WebExposed bug list
   if (document.URL.indexOf('keywords=WebExposed') != -1) {
-    addSaveButton();
-    addColumn('hidden','checkbox');
-    addColumn('important','checkbox');
+
+    // Create checkboxes corresponding to priority changes
+    for (var i = 0; i<PRIORITIES.length; i++)
+      if (PRIORITIES[i] !== 'normal')
+        addColumn(PRIORITIES[i],'checkbox');
+
+    // Addition support fields
     addColumn('crbugId','text');
     addColumn('comment','textarea');
+
+    // Try to send an update to the server every SEND_UPDATE_INTERVAL seconds
     setInterval(sendUpdate, SEND_UPDATE_INTERVAL*1000);
-    syncMonitor();
+
+    // Refresh the data on the page if the user is idle
+    syncTimer();
   }
 })();
 // TODO: Only allow one of hidden/important to be selected at a time
