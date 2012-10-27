@@ -10,12 +10,12 @@
  * @author meh@chromium.org (Max Heinritz)
  */
 
-// Note: this extension script is injected into page's own script.
+// Note: this extension script is injected into page's existing script.
 // To avoid conflating namespaces, we wrap the whole script in a self-executing 
 // anonymous function.
 (function() {
   var storage = chrome.storage.local;
-  
+  // Set to true when the script is loading data from the server
   var loading = false;
 
   // Stores incremental updates to the input elements before they are sent to
@@ -111,6 +111,7 @@
     // For each checkbox, the value is a boolean (where true means checked).
     if (this.type == 'checkbox') {
       name = 'priority';
+      // If the check box is unchecked, return the priority to 'normal'
       value = this.checked ? this.name : 'normal';
       togglePriorities();
     // For other types of input (right now only textarea and text), the value
@@ -139,9 +140,9 @@
     function togglePriorities() {
       // disable all other priority checkboxes if this one is now checked
       console.log('toggling priorities');
-      for (p in PRIORITIES)
-        if (inputName !== PRIORITIES[p] && PRIORITIES[p] !== 'normal')
-          document.getElementById(bugId + ' ' + PRIORITIES[p]).disabled = 
+      for (var i = 0; i<PRIORITIES.length; i++)
+        if (inputName !== PRIORITIES[i] && PRIORITIES[i] !== 'normal')
+          document.getElementById(bugId + ' ' + PRIORITIES[i]).disabled = 
             (value !== 'normal');
     }
   }
@@ -150,7 +151,7 @@
    * Save the changes to the bug states to the AppEngine backend.
    */
   function sendUpdate() {
-    // Check if we have updates to send. If not, don't send the update.
+    // Check if we have updates to send. If not, don't anything!
     if (Object.keys(update).length === 0)
       return;
 
@@ -163,7 +164,7 @@
       else {
         update = {};
         console.log('sending update');
-        // TODO: Send POST request to server
+        // TODO: Send POST request to server here
       }
     });
   }
@@ -218,7 +219,7 @@
     loading = false;
 
     /**
-     * Clears inputs for a bug with no updates.
+     * Clears inputs for a bug.
      */
     function clearInputElements(bugId) {
       elements = document.getElementsByClassName(bugId);
@@ -273,4 +274,3 @@
     syncTimer();
   }
 })();
-// TODO: Only allow one of hidden/important to be selected at a time
