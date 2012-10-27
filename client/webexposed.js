@@ -262,7 +262,7 @@
       if (PRIORITIES[i] !== 'normal')
         addColumn(PRIORITIES[i],'checkbox');
 
-    // Addition support fields
+    // Additional support fields
     addColumn('crbugId','text');
     addColumn('comment','textarea');
 
