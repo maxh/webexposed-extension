@@ -1,3 +1,9 @@
+/** 
+ * Copyright (c) 2012 The Chromium Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
+
 /**
  * @fileoverview The WebExposed Chrome extension allows users to 
  * organize WebKit bugs labeled with the "WebExposed" keyword.
@@ -162,7 +168,6 @@
         update = {};
         console.log('sending update');
         // TODO: Send POST request to server
-        // TODO: Disable save button once changes are made
       }
     });
   }
