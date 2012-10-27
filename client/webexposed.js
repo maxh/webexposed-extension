@@ -84,10 +84,6 @@
       } else {
         input = document.createElement('input');
         input.type = type;
-        // Bug ids are typically <=7 digits.
-        if (name === 'crbug id') {
-          input.size = 7;
-        }
       }
 
       input.onchange = storeUpdate;
@@ -103,7 +99,7 @@
   }
 
   /**
-   * Saves changes to input elements to a local array in preparation for POST to
+   * Saves changes to input elements to a local object in preparation for POST to
    * server. Called when a UI element changes.
    */
   function storeUpdate() {
