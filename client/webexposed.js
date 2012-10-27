@@ -134,8 +134,6 @@
     console.log(JSON.stringify(update[bugId]));
     console.log(JSON.stringify(update));
 
-    document.getElementById('webexposed_button').disabled = false;
-
     function togglePriorities() {
       // disable all other priority checkboxes if this one is now checked
       console.log('toggling priorities');
