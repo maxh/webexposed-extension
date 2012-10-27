@@ -30,7 +30,7 @@
   /**
    * Adds a column corresponding an attribute of a bug.
    * @param {string} name This is the name of the column to add. Typically 
-   * corresponds to the name of an attribute in the model (eg 'crbug id').
+   * corresponds to the name of an attribute in the model (eg 'crbugId').
    * @param {string} type This is the {@code HTML} {@code input} type for the
    *     column. (eg {@code checkbox} for 'hidden')
    */
