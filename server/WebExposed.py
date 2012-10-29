@@ -8,9 +8,9 @@ extension. The JSON format for the state of a single bug is as follows:
 
 {
   "12345": {
-    "priority": "normal",        // one of: important, normal, hidden.
-    "tracking_bug_id": 23456,    // Id of the associated Chromium bug.
-    "comments": "Hello!"         // Comments contained for this bug.
+    "priority": "normal",     // one of: important, normal, hidden.
+    "trackingBugId": 23456,   // Id of the associated Chromium bug.
+    "comments": "Hello!"      // Comments contained for this bug.
   }
 }
 
@@ -26,9 +26,19 @@ import os
 import webapp2
 import sys
 
-# The password required for updating bug statuses. Will be set in the
-# InitializeWebExposedService() method.
-bug_update_password = ""
+# Which file is used to store the bug update password?
+PASSWORD_FILE = os.path.join(os.path.dirname(__file__), "password.txt")
+
+# The password required for updating bug statuses. Since we can't rely on global
+# variables, provide a helper function that can read this value. This could be
+# implemented in memory cache as well.
+def GetBugUpdatePassword():
+  assert os.path.exists(PASSWORD_FILE), 'The password file needs to exist.'
+  with open(PASSWORD_FILE) as file:
+    return file.read().strip()
+
+  assert false, 'Could not open the password file for reading.'
+  return ''
 
 class EntryPage(webapp2.RequestHandler):
   def get(self):
@@ -48,7 +58,7 @@ class RequestStateHandler(webapp2.RequestHandler):
     for bug in bug_list:
       bug_output_list[bug.bug_id] = {
         "priority": bug.priority,
-        "tracking_bug_id": bug.tracking_bug_id,
+        "trackingBugId": bug.tracking_bug_id,
         "comments": bug.comments
       }
 
@@ -61,20 +71,36 @@ class RequestUpdateHandler(webapp2.RequestHandler):
   for just a single bug. The "password" request field must also be set."""
   def post(self):
     self.response.headers['Content-Type'] = 'text/plain'
-    if bug_update_password != self.request.get('password'):
+    if GetBugUpdatePassword() != self.request.get('password'):
       self.response.out.write('NO ACCESS')
       return
 
-    # TODO: Implement parsing the request JSON
-    self.response.out.write('NOT IMPLEMENTED')
+    data = json.loads(self.request.get('data', '{}'))
+    if len(data) == 0:
+      self.response.out.write('NO DATA')
+      return
+
+    # Iterate over all bugs in the provided update.
+    update_count = 0
+    for bug_id in data:
+      if not isinstance(bug_id, basestring) or bug_id.isnumeric() == False:
+        continue
+
+      # And update all the data we've received.
+      bug = Bug.Bug.OpenOrCreate(int(bug_id))
+      if 'priority' in data[bug_id]:
+        bug.priority = data[bug_id]['priority']
+      if 'trackingBugId' in data[bug_id]:
+        bug.tracking_bug_id = data[bug_id]['trackingBugId']
+      if 'comments' in data[bug_id]:
+        bug.comments = data[bug_id]['comments']
+
+      update_count += 1
+      bug.put()
+
+    self.response.out.write('UPDATED %d BUGS' % update_count)
 
 def InitializeWebExposedService():
-  if not os.path.exists('password.txt'):
-    sys.exit('Unable to read the password.txt file.')
-
-  with open('password.txt') as file:
-    bug_update_password = file.read().strip()
-
   return webapp2.WSGIApplication([
     ('/', EntryPage),
     ('/state', RequestStateHandler),

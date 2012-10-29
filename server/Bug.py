@@ -24,29 +24,19 @@ class Bug(db.Model):
   are provided for opening, creating or listing the stored bugs."""
 
   # Properties we store for each bug.
-  bug_id = db.IntegerProperty(required=True)
-  priority = db.StringProperty(required=True,
-                               choices=set(["hidden","normal","important"]))
+  bug_id = db.IntegerProperty()
+  priority = db.StringProperty(choices=set(["hidden","normal","important"]))
   tracking_bug_id = db.IntegerProperty()
   comments = db.StringProperty()
 
-  def __init__(self, bug_id):
-    super(Bug, self).__init__()
-    self.bug_id = bug_id
-    self.priority = "normal"
-    self.tracking_bug_id = -1
-    self.comments = ""
-
   @staticmethod
   def OpenOrCreate(bug_id):
-    bug_list = db.GqlQuery('SELECT * FROM Bug WHERE bug_id = :1', bug_id)
+    bug_query = db.GqlQuery('SELECT * FROM Bug WHERE bug_id = :1', bug_id)
+    for bug in bug_query.run(limit=1):
+      return bug
 
-    # If we were able to retrieve the bug from the database, return it.
-    # Otherwise return a new Bug with the given Id.
-    if bug_list.length() == 1:
-      return bug_list[0]
-
-    return Bug(bug_id)
+    return Bug(bug_id = bug_id, priority = 'normal', tracking_bug_id = -1,
+        comments = '')
 
   @staticmethod
   def List():
