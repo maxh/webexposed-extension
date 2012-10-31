@@ -127,10 +127,6 @@
 
     // Store the value to the JSON.
     update[bugId][name] = value;
-
-    // Write the update to the console, for reference.
-    console.log('storing update');
-    console.log(JSON.stringify(update));
   }
 
   function togglePriorities() {
@@ -145,9 +141,12 @@
     document.getElementById(bugId + ' hidden').disabled 
       = (priority == 'important');
 
-    // Change color of row
+    // Change color of row by changing CSS class
     var row = document.getElementsByClassName('webexposed_row_' + bugId)[0];
-    row.className = row.className.replace(/webexposed_row_priority_[a-z]+ */,'');
+    // Remove the old priority class
+    row.className = 
+      row.className.replace(/webexposed_row_priority_[a-z]+ */,'');
+    // Add new priority class
     row.className = row.className + ' webexposed_row_priority_' + priority;
   }
 
@@ -177,8 +176,6 @@
         // Do nothing if the request isn't fully loaded
         if(request.readyState != 4)
           return;
-        console.log('response text:');
-        console.log(request.responseText);
       };
       request.setRequestHeader("Content-type", 
         "application/x-www-form-urlencoded");
@@ -191,8 +188,6 @@
   /**
    * Retrieves update from the server and adjusts UI accordingly.
    */
-
-
   function requestUpdate()
   {
     var request = new XMLHttpRequest();
@@ -208,11 +203,7 @@
       if(request.readyState != 4)
         return;
 
-      console.log('response text:');
-      console.log(request.responseText);
-
       jsonUpdate = eval('('+request.responseText+')');
-      console.log(jsonUpdate);
 
       // Examine each bug and find its entry in the JSON object, if any
       var rows = document.getElementsByClassName('bz_bugitem');
@@ -266,7 +257,7 @@
     }
   };
 
-  // only run the extension on the WebExposed bug list
+  // Only run the extension on the WebExposed bug list
   if (document.URL.indexOf('keywords=WebExposed') != -1) {
     addColumns();
     requestUpdate();
