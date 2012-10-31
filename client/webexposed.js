@@ -24,21 +24,17 @@
   var PRIORITIES = ['hidden','normal','important'];
   var SYNC_INTERVAL = 15; // in minutes
   var SEND_UPDATE_INTERVAL = 2; // in seconds
-  //var SERVER_URL = 'http://webexposedextension.appspot.com';
-  var SERVER_URL = 'http://localhost:8080';
+  var SERVER_URL = 'http://webexposedextension.appspot.com';
+  //var SERVER_URL = 'http://localhost:8080';
 
   /**
    * Adds a column corresponding an attribute of a bug.
-   * @param {string} name This is the name of the column to add. Typically 
-   * corresponds to the name of an attribute in the model (eg 'crbugId').
-   * @param {string} type This is the {@code HTML} {@code input} type for the
-   *     column. (eg {@code checkbox} for 'hidden')
+   * @param {string} name This is the name of the column to add.
    */
-  function addColumn(name,type) {
+  function addColumn(name) {
     // Note: Bugzilla buglist tables contain at most 100 bugs per table,
     // so there are multiple tables & colgroups per page with >100 bugs.
     var colGroups = document.getElementsByTagName('colgroup');
-
     for (var i = colGroups.length - 1; i >= 0; i--) {
       var col = document.createElement('col');
       col.className = 'webexposed colgroup ' + name;
@@ -54,21 +50,8 @@
       headerLists[i].appendChild(th);
     }
 
-    addUIElementToAllRows(name,type);
-  }
-
-  /**
-   * Adds a UI element on each row that corresponds to an attribute of the bug
-   * on that row. Different attributes require different input types.
-   * @param {string} name This is the name of the column to add. Corresponds
-   *     to the name of an attribute in the model (eg 'hidden' or 'crbug id').
-   * @param {string} type This is the {@code HTML} {@code input} type for the
-   *     attribute. (eg {@code checkbox} for 'hidden')
-   */
-  function addUIElementToAllRows(name,type) {
-  	// Add UI elements to modify the attribute
+    // Create cells and individual input elements
     var rows = document.getElementsByClassName('bz_bugitem');
-
     for (var i = rows.length - 1; i >= 0; i--) {
       // Extract the bug id from the link in the first cell in this row
       var bugId = rows[i].cells[0].getElementsByTagName('a')[0].innerHTML;
@@ -78,21 +61,27 @@
 
       var input;
 
-      // Most inputs will be input elements, except for textareas.
-      if (type === 'textarea') {
-        input = document.createElement('textarea');
-      } else {
-        input = document.createElement('input');
-        input.type = type;
+      switch(name) {
+        case 'comments':
+          input = document.createElement('textarea');
+          break;
+        case 'hidden': case 'important':
+          input = document.createElement('input');
+          input.type = 'checkbox';
+          input.addEventListener('change',togglePriorities);
+          break;
+        case 'trackingBugId':
+          input = document.createElement('input');
+          input.type = 'text';
+          break;
       }
 
-      input.addEventListener('change',togglePriorities);
       input.addEventListener('change',storeUpdate);
       input.addEventListener('input',storeUpdate);
   
       input.id = bugId + ' ' + name;      
       input.name = name;
-      input.className = 'webexposed ' + type + ' ' + bugId;
+      input.className = 'webexposed ' + input.type + ' ' + bugId;
 
       td.appendChild(input);
       rows[i].appendChild(td);
@@ -135,21 +124,28 @@
 
     // Write the update to the console, for reference.
     console.log('storing update');
-    console.log(JSON.stringify(update[bugId]));
     console.log(JSON.stringify(update));
   }
 
   function togglePriorities() {
     var bugId = this.id.split(' ')[0]; // ids are like '{id} {name}'
-    var inputName = this.id.split(' ')[1];
-    var value = this.checked ? this.name : 'normal';
+    var name = this.id.split(' ')[1]; // {'important','hidden'}
+    var value = this.checked ? name : 'normal';
 
     // disable all other priority checkboxes if this one is now checked
     console.log('toggling priorities');
-    for (var i = 0; i<PRIORITIES.length; i++)
-      if (inputName !== PRIORITIES[i] && 'normal' !== PRIORITIES[i])
-        document.getElementById(bugId + ' ' + PRIORITIES[i]).disabled = 
-          (value !== 'normal');
+    switch (value) {
+      case 'hidden':
+        document.getElementById(bugId + ' important').disabled = true;
+        break;
+      case 'important':
+        document.getElementById(bugId + ' hidden').disabled = true;
+        break;
+      default: // value == 'normal'
+        document.getElementById(bugId + ' important').disabled = false;
+        document.getElementById(bugId + ' hidden').disabled = false;
+        break;
+    }
   }
 
   /**
@@ -210,6 +206,7 @@
 
       console.log('response text:');
       console.log(request.responseText);
+
       jsonUpdate = eval('('+request.responseText+')');
       console.log(jsonUpdate);
 
@@ -288,14 +285,10 @@
   if (document.URL.indexOf('keywords=WebExposed') != -1) {
 
     // CREATE UI
-    // Create checkboxes corresponding to priority changes
-    for (var i = 0; i<PRIORITIES.length; i++)
-      if (PRIORITIES[i] !== 'normal')
-        addColumn(PRIORITIES[i],'checkbox');
-
-    // Additional support fields
-    addColumn('trackingBugId','text');
-    addColumn('comments','textarea');
+    addColumn('hidden');
+    addColumn('important');
+    addColumn('trackingBugId');
+    addColumn('comments');
 
     // LOAD STATE
     requestUpdate();
