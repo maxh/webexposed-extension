@@ -22,10 +22,12 @@
   // the server.
   var update = {};
 
-  // Constants
+  // Config
   var PRIORITIES = ['hidden','normal','important'];
   var SYNC_INTERVAL = 15; // in minutes
   var SEND_UPDATE_INTERVAL = 2; // in seconds
+  //var SERVER_URL = 'webexposedextension.appspot.com';
+  var SERVER_URL = 'localhost:8081';
 
   /**
    * Adds a column corresponding an attribute of a bug.
@@ -86,8 +88,10 @@
         input.type = type;
       }
 
-      input.onchange = storeUpdate;
-      input.oninput = storeUpdate;
+      input.addEventListener('change',togglePriorities);
+
+      input.addEventListener('change',storeUpdate);
+      input.addEventListener('input',storeUpdate);
   
       input.id = bugId + ' ' + name;      
       input.name = name;
@@ -99,8 +103,8 @@
   }
 
   /**
-   * Saves changes to input elements to a local object in preparation for POST to
-   * server. Called when a UI element changes.
+   * Saves changes to input elements to a local object in preparation for POST
+   * to server. Called when a UI element changes.
    */
   function storeUpdate() {
     var bugId = this.id.split(' ')[0]; // ids are like '{id} {name}'
@@ -113,7 +117,6 @@
       name = 'priority';
       // If the check box is unchecked, return the priority to 'normal'
       value = this.checked ? this.name : 'normal';
-      togglePriorities();
     // For other types of input (right now only textarea and text), the value
     // is the content in the input element.
     } else {
@@ -136,15 +139,19 @@
     console.log('storing update');
     console.log(JSON.stringify(update[bugId]));
     console.log(JSON.stringify(update));
+  }
 
-    function togglePriorities() {
-      // disable all other priority checkboxes if this one is now checked
-      console.log('toggling priorities');
-      for (var i = 0; i<PRIORITIES.length; i++)
-        if (inputName !== PRIORITIES[i] && PRIORITIES[i] !== 'normal')
-          document.getElementById(bugId + ' ' + PRIORITIES[i]).disabled = 
-            (value !== 'normal');
-    }
+  function togglePriorities() {
+    var bugId = this.id.split(' ')[0]; // ids are like '{id} {name}'
+    var inputName = this.id.split(' ')[1];
+    var value = this.checked ? this.name : 'normal';
+
+    // disable all other priority checkboxes if this one is now checked
+    console.log('toggling priorities');
+    for (var i = 0; i<PRIORITIES.length; i++)
+      if (inputName !== PRIORITIES[i] && 'normal' !== PRIORITIES[i])
+        document.getElementById(bugId + ' ' + PRIORITIES[i]).disabled = 
+          (value !== 'normal');
   }
 
   /**
@@ -160,77 +167,121 @@
       // Check if the user didn't enter the secret word on the options page
       if (!items['secretword']) {
         alert('Please enter the secret word on the options page.');
+        return;
       }
-      else {
-        update = {};
-        console.log('sending update');
-        // TODO: Send POST request to server here
-      }
+      console.log('sending update:');
+      console.log(JSON.stringify(update));
+
+      // TODO: Send POST request to server here
+      console.log('about to send post request');
+      
+      var request = new XMLHttpRequest();
+      request.open('POST',
+        SERVER_URL + '/state?password=' + 
+        items['secretword'], 
+        true);
+      request.data = JSON.stringify(update);
+      request.onreadystatechange = function() {
+        console.log('request in the callback:');
+        console.log(request);
+        console.log('response text:');
+        console.log(request.responseText);
+      };
+      
+      console.log('request before sending:');
+      console.log(request);
+      request.send(null);
+      console.log('request sent');
+
+      update = {};
     });
   }
 
   /**
    * Retrieves update from the server and adjusts UI accordingly.
    */
-  function loadUpdate() {
-    loading = true;
 
-    console.log('loading update');
-    var rows = document.getElementsByClassName('bz_bugitem');
 
-    jsonUpdate = []; // TODO: make request to App Engine Backend here
+  function requestUpdate()
+  {
+    var request = new XMLHttpRequest();
+    console.log('about to send get request');
+    request.open('GET', SERVER_URL + '/state', 
+      true);
+    request.onreadystatechange = loadUpdate;
+    console.log('request before sending:');
+    console.log(request);
+    request.send(null);
+    console.log('request sent');
 
-    // Examine each bug and find its entry in the JSON object, if any
-    for (var i = rows.length - 1; i >= 0; i--) {
-      // Extract the bug id from the link in the first cell in this row
-      var bugId = rows[i].cells[0].getElementsByTagName('a')[0].innerHTML;
-      
-      // Assume that the current information is wrong if it's not consistent
-      // with the server; clear it and replace with the server's information
-      // TODO: only clear unchanged values; this may flash the changes 
-      // to UI elements.
-      clearInputElements(bugId);
+    function loadUpdate() {
+      // Only load the update if the HTTP response content has finished loading
+      if(request.readyState != 4)
+        return;
 
-      // If the update has no information on this bug, we clear its inputs
-      if (typeof (jsonUpdate[bugId]) == 'undefined') 
-        continue;
+      console.log('request in the callback:');
+      console.log(request);
+      console.log('response text:');
+      console.log(request.responseText);
+      return;
+      jsonUpdate = eval('('+request+')');
 
-      var updatesForThisBug = jsonUpdate[bugId];
+      // Examine each bug and find its entry in the JSON object, if any
+      var rows = document.getElementsByClassName('bz_bugitem');
+      loading = true;
+      for (var i = rows.length - 1; i >= 0; i--) {
+        // Extract the bug id from the link in the first cell in this row
+        var bugId = rows[i].cells[0].getElementsByTagName('a')[0].innerHTML;
+        
+        // Assume that the current information is wrong if it's not consistent
+        // with the server; clear it and replace with the server's information
+        // TODO: only clear unchanged values; this may flash the changes 
+        // to UI elements.
+        clearInputElements(bugId);
 
-      // Print the JSON to the console, for reference
-      console.log(bugId + ': ');
-      console.log(jsonUpdate[bugId]);
+        // If the update has no information on this bug, we clear its inputs
+        if (typeof (jsonUpdate[bugId]) == 'undefined') 
+          continue;
 
-      // Parse the update from the server and update the corresponding UI
-      // elements
-      for (var j = 0; j < updatesForThisBug.length; j++) {
-        var fieldName = updatesForThisBug[j][0];
-        var fieldValue = updatesForThisBug[j][1];
+        var updatesForThisBug = jsonUpdate[bugId];
 
-        if (fieldName = 'priority')
-          document.getElementById(fieldValue + ' ' + bugId).checked = true;
-        // For other types of input (right now only textarea and text), the 
-        // value is the content in the input element.
-        else
-          document.getElementById(fieldName + ' ' + bugId).value = fieldValue;
+        // Print the JSON to the console, for reference
+        console.log(bugId + ': ');
+        console.log(updatesForThisBug.length);
+
+        // Parse the update from the server and update the corresponding UI
+        // elements
+        for (fieldName in updatesForThisBug) {
+          var fieldValue = updatesForThisBug[fieldName];
+          console.log('name: ' + fieldName);
+          console.log('value: ' + fieldValue);
+
+          if (fieldName == 'priority') {
+            document.getElementById(bugId + ' ' + fieldValue).checked = true;
+            // toggle the other priorities based on this one
+            togglePriorities.apply(
+              document.getElementById(bugId + ' ' + fieldValue));
+          }
+          // For other types of input (right now only textarea and text), the 
+          // value is the content in the input element.
+          else
+            document.getElementById(bugId + ' ' + fieldName).value = fieldValue;
+        }
       }
-    }
+      loading = false;
 
-    loading = false;
-
-    /**
-     * Clears inputs for a bug.
-     */
-    function clearInputElements(bugId) {
-      elements = document.getElementsByClassName(bugId);
-      for (var i = 0; i < elements.length; i++)
-        // For each checkbox, the value is a boolean (false => unchecked)
-        if (elements[i].tagName === 'INPUT' && elements[i].type === 'checkbox')
-            elements[i].checked = false;
-        // For other types of input (right now only textarea and text), clear 
-        // the content in the input element.
-        else
-          elements[i].value = '';
+      // Clears inputs for a bug.
+      function clearInputElements(bugId) {
+        elements = document.getElementsByClassName(bugId);
+        for (var i = 0; i < elements.length; i++)
+          // For each checkbox, the value is a boolean (false => unchecked)
+          if (elements[i].tagName === 'INPUT' && elements[i].type === 'checkbox')
+              elements[i].checked = false;
+          // For other types of input (right now only textarea and text), clear 
+          // the content in the input element.
+          else
+            elements[i].value = '';
+      }
     }
   }
 
@@ -258,14 +309,18 @@
   // only run the extension on the WebExposed bug list
   if (document.URL.indexOf('keywords=WebExposed') != -1) {
 
+    // CREATE UI
     // Create checkboxes corresponding to priority changes
     for (var i = 0; i<PRIORITIES.length; i++)
       if (PRIORITIES[i] !== 'normal')
         addColumn(PRIORITIES[i],'checkbox');
 
     // Additional support fields
-    addColumn('crbugId','text');
-    addColumn('comment','textarea');
+    addColumn('tracking_bug_id','text');
+    addColumn('comments','textarea');
+
+    // LOAD STATE
+    requestUpdate();
 
     // Try to send an update to the server every SEND_UPDATE_INTERVAL seconds
     setInterval(sendUpdate, SEND_UPDATE_INTERVAL*1000);

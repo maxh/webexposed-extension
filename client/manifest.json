@@ -11,6 +11,7 @@
   "description": "Extension to organize WebKit WebExposed bugs.",
   "permissions": [
     "http://webkit.org/",
+    "http://webexposedextension.appspot.com/",
     "storage"
   ],
   "options_page": "options.html",
