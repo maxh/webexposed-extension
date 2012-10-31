@@ -21,33 +21,36 @@
   var update = {};
 
   // Config
-  var PRIORITIES = ['hidden','normal','important'];
+  var COLUMNS = ['hidden','important','trackingBugId','comments'];
   var SYNC_INTERVAL = 15; // in minutes
   var SEND_UPDATE_INTERVAL = 2; // in seconds
   var SERVER_URL = 'http://webexposedextension.appspot.com';
-  //var SERVER_URL = 'http://localhost:8080';
 
   /**
    * Adds a column corresponding an attribute of a bug.
    * @param {string} name This is the name of the column to add.
    */
-  function addColumn(name) {
+  function addColumns() {
     // Note: Bugzilla buglist tables contain at most 100 bugs per table,
     // so there are multiple tables & colgroups per page with >100 bugs.
     var colGroups = document.getElementsByTagName('colgroup');
     for (var i = colGroups.length - 1; i >= 0; i--) {
-      var col = document.createElement('col');
-      col.className = 'webexposed colgroup ' + name;
-      colGroups[i].appendChild(col);
+      for (var j = 0; j < COLUMNS.length; j++) {
+        var col = document.createElement('col');
+        col.className = 'webexposed ' + COLUMNS[j];
+        colGroups[i].appendChild(col);
+      } 
     }
 
     // Create headers from the attribute's name
     var headerLists = document.getElementsByClassName('bz_buglist_header');
     for (var i = headerLists.length - 1; i >= 0; i--) {
-      var th = document.createElement('th');
-      th.className = 'webexposed header ' + name;
-      th.innerHTML = name.replace(/-/g," ");
-      headerLists[i].appendChild(th);
+      for (var j = 0; j < COLUMNS.length; j++) {
+        var th = document.createElement('th');
+        th.className = 'webexposed ' + COLUMNS[j];
+        th.innerHTML = COLUMNS[j];
+        headerLists[i].appendChild(th);
+      }
     }
 
     // Create cells and individual input elements
@@ -55,36 +58,39 @@
     for (var i = rows.length - 1; i >= 0; i--) {
       // Extract the bug id from the link in the first cell in this row
       var bugId = rows[i].cells[0].getElementsByTagName('a')[0].innerHTML;
+      rows[i].className = rows[i].className + ' webexposed_row_' + bugId;
 
-      var td = document.createElement('td');
-      td.className = 'webexposed column ' + name;
+      for (var j = 0; j < COLUMNS.length; j++) {
+        var td = document.createElement('td');
+        td.className = 'webexposed ' + COLUMNS[j];
 
-      var input;
+        var input;
 
-      switch(name) {
-        case 'comments':
-          input = document.createElement('textarea');
-          break;
-        case 'hidden': case 'important':
-          input = document.createElement('input');
-          input.type = 'checkbox';
-          input.addEventListener('change',togglePriorities);
-          break;
-        case 'trackingBugId':
-          input = document.createElement('input');
-          input.type = 'text';
-          break;
+        switch(COLUMNS[j]) {
+          case 'comments':
+            input = document.createElement('textarea');
+            break;
+          case 'hidden': case 'important':
+            input = document.createElement('input');
+            input.type = 'checkbox';
+            input.addEventListener('change',togglePriorities);
+            break;
+          case 'trackingBugId':
+            input = document.createElement('input');
+            input.type = 'text';
+            break;
+        }
+
+        input.addEventListener('change',storeUpdate);
+        input.addEventListener('input',storeUpdate);
+    
+        input.id = bugId + ' ' + COLUMNS[j];      
+        input.name = COLUMNS[j];
+        input.className = 'webexposed ' + bugId;
+
+        td.appendChild(input);
+        rows[i].appendChild(td);
       }
-
-      input.addEventListener('change',storeUpdate);
-      input.addEventListener('input',storeUpdate);
-  
-      input.id = bugId + ' ' + name;      
-      input.name = name;
-      input.className = 'webexposed ' + input.type + ' ' + bugId;
-
-      td.appendChild(input);
-      rows[i].appendChild(td);
     }
   }
 
@@ -130,22 +136,19 @@
   function togglePriorities() {
     var bugId = this.id.split(' ')[0]; // ids are like '{id} {name}'
     var name = this.id.split(' ')[1]; // {'important','hidden'}
-    var value = this.checked ? name : 'normal';
+    var priority = this.checked ? name : 'normal';
 
-    // disable all other priority checkboxes if this one is now checked
+    // Disable all other priority checkboxes if this one is now checked
     console.log('toggling priorities');
-    switch (value) {
-      case 'hidden':
-        document.getElementById(bugId + ' important').disabled = true;
-        break;
-      case 'important':
-        document.getElementById(bugId + ' hidden').disabled = true;
-        break;
-      default: // value == 'normal'
-        document.getElementById(bugId + ' important').disabled = false;
-        document.getElementById(bugId + ' hidden').disabled = false;
-        break;
-    }
+    document.getElementById(bugId + ' important').disabled 
+      = (priority == 'hidden');
+    document.getElementById(bugId + ' hidden').disabled 
+      = (priority == 'important');
+
+    // Change color of row
+    var row = document.getElementsByClassName('webexposed_row_' + bugId)[0];
+    row.className = row.className.replace(/webexposed_row_priority_[a-z]+ */,'');
+    row.className = row.className + ' webexposed_row_priority_' + priority;
   }
 
   /**
@@ -171,6 +174,7 @@
         items['secretword'], 
         true);
       request.onreadystatechange = function() {
+        // Do nothing if the request isn't fully loaded
         if(request.readyState != 4)
           return;
         console.log('response text:');
@@ -180,7 +184,7 @@
         "application/x-www-form-urlencoded");
       request.send('data='+JSON.stringify(update));
 
-      update = {}; // Clear temporary update storage
+      update = {}; // Clear temporary update storage (assumes request makes it)
     });
   }
 
@@ -215,12 +219,6 @@
       for (var i = rows.length - 1; i >= 0; i--) {
         // Extract the bug id from the link in the first cell in this row
         var bugId = rows[i].cells[0].getElementsByTagName('a')[0].innerHTML;
-        
-        // Assume that the current information is wrong if it's not consistent
-        // with the server; clear it and replace with the server's information
-        // TODO: only clear unchanged values; this may flash the changes 
-        // to UI elements.
-        clearInputElements(bugId);
 
         // If the update has no information on this bug, we clear its inputs
         if (typeof (jsonUpdate[bugId]) == 'undefined') 
@@ -244,19 +242,6 @@
         document.getElementById(bugId + ' comments').value =
           bugUpdates['comments'];
       }
-
-      // Clears inputs for a bug.
-      function clearInputElements(bugId) {
-        elements = document.getElementsByClassName(bugId);
-        for (var i = 0; i < elements.length; i++)
-          // For each checkbox, the value is a boolean (false => unchecked)
-          if (elements[i].tagName === 'INPUT' && elements[i].type === 'checkbox')
-              elements[i].checked = false;
-          // For other types of input (right now only textarea and text), clear 
-          // the content in the input element.
-          else
-            elements[i].value = '';
-      }
     }
   }
 
@@ -272,7 +257,7 @@
 
     function sync() {
       console.log("syncing");
-      loadUpdate();
+      document.location.reload(true);
     }
 
     function resetTimer() {
@@ -283,20 +268,11 @@
 
   // only run the extension on the WebExposed bug list
   if (document.URL.indexOf('keywords=WebExposed') != -1) {
-
-    // CREATE UI
-    addColumn('hidden');
-    addColumn('important');
-    addColumn('trackingBugId');
-    addColumn('comments');
-
-    // LOAD STATE
+    addColumns();
     requestUpdate();
-
-    // Try to send an update to the server every SEND_UPDATE_INTERVAL seconds
+    // Send an update to the server every SEND_UPDATE_INTERVAL seconds
     setInterval(sendUpdate, SEND_UPDATE_INTERVAL*1000);
-
-    // Refresh the data on the page if the user is idle
+    // Refresh the page periodically if the user is idle
     syncTimer();
   }
 })();

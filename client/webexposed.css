@@ -4,15 +4,15 @@
  * found in the LICENSE file.
  */
 
-[class^='webexposed'] { 
+th.webexposed { 
 	background-color: rgba(175,238,238,0.2);
+  ext-transform: capitalize;
 }
 
-.webexposed.header {
-  text-transform: capitalize;
+tr.webexposed_row_priority_hidden td {
+  color: gray;
 }
 
-input#webexposed_button { 
-  background-color: rgba(175,238,238,0.2);
-	float: right;
+tr.webexposed_row_priority_important td {
+  background-color: rgb(204,255,204);
 }
