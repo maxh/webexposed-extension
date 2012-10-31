@@ -15,8 +15,6 @@
 // anonymous function.
 (function() {
   var storage = chrome.storage.local;
-  // Set to true when the script is loading data from the server
-  var loading = false;
 
   // Stores incremental updates to the input elements before they are sent to
   // the server.
@@ -26,8 +24,8 @@
   var PRIORITIES = ['hidden','normal','important'];
   var SYNC_INTERVAL = 15; // in minutes
   var SEND_UPDATE_INTERVAL = 2; // in seconds
-  //var SERVER_URL = 'webexposedextension.appspot.com';
-  var SERVER_URL = 'localhost:8081';
+  //var SERVER_URL = 'http://webexposedextension.appspot.com';
+  var SERVER_URL = 'http://localhost:8080';
 
   /**
    * Adds a column corresponding an attribute of a bug.
@@ -89,7 +87,6 @@
       }
 
       input.addEventListener('change',togglePriorities);
-
       input.addEventListener('change',storeUpdate);
       input.addEventListener('input',storeUpdate);
   
@@ -113,26 +110,27 @@
     var name = '';
 
     // For each checkbox, the value is a boolean (where true means checked).
-    if (this.type == 'checkbox') {
-      name = 'priority';
-      // If the check box is unchecked, return the priority to 'normal'
-      value = this.checked ? this.name : 'normal';
-    // For other types of input (right now only textarea and text), the value
-    // is the content in the input element.
-    } else {
-      name = this.name;
-      value = this.value;
+    switch(this.name) {
+      case 'trackingBugId':
+        name = 'trackingBugId';
+        value = parseInt(this.value);
+        break; 
+      case 'hidden': case 'important':
+        name = 'priority';
+        // If the check box is unchecked, return the priority to 'normal'
+        value = this.checked ? this.name : 'normal';
+        break;
+      default:
+        name = this.name;
+        value = this.value;
+        break;
     }
-
-    // If this storeUpdate was triggered by a programmatic onchange event while
-    // we load server data, then we should not send changes back to the server
-    if (loading) return;
 
     // Create an entry in the update for this bug if none exists.
     if (typeof (update[bugId] == 'undefined'))
       update[bugId] = {};
 
-    // Store the value to the array.
+    // Store the value to the JSON.
     update[bugId][name] = value;
 
     // Write the update to the console, for reference.
@@ -164,36 +162,29 @@
 
     // Load secret word using the Chrome extension storage API.
     storage.get('secretword',function(items) {
+
       // Check if the user didn't enter the secret word on the options page
       if (!items['secretword']) {
         alert('Please enter the secret word on the options page.');
         return;
       }
-      console.log('sending update:');
-      console.log(JSON.stringify(update));
 
-      // TODO: Send POST request to server here
-      console.log('about to send post request');
-      
       var request = new XMLHttpRequest();
       request.open('POST',
-        SERVER_URL + '/state?password=' + 
+        SERVER_URL + '/update?password=' + 
         items['secretword'], 
         true);
-      request.data = JSON.stringify(update);
       request.onreadystatechange = function() {
-        console.log('request in the callback:');
-        console.log(request);
+        if(request.readyState != 4)
+          return;
         console.log('response text:');
         console.log(request.responseText);
       };
-      
-      console.log('request before sending:');
-      console.log(request);
-      request.send(null);
-      console.log('request sent');
+      request.setRequestHeader("Content-type", 
+        "application/x-www-form-urlencoded");
+      request.send('data='+JSON.stringify(update));
 
-      update = {};
+      update = {}; // Clear temporary update storage
     });
   }
 
@@ -209,8 +200,6 @@
     request.open('GET', SERVER_URL + '/state', 
       true);
     request.onreadystatechange = loadUpdate;
-    console.log('request before sending:');
-    console.log(request);
     request.send(null);
     console.log('request sent');
 
@@ -219,16 +208,13 @@
       if(request.readyState != 4)
         return;
 
-      console.log('request in the callback:');
-      console.log(request);
       console.log('response text:');
       console.log(request.responseText);
-      return;
-      jsonUpdate = eval('('+request+')');
+      jsonUpdate = eval('('+request.responseText+')');
+      console.log(jsonUpdate);
 
       // Examine each bug and find its entry in the JSON object, if any
       var rows = document.getElementsByClassName('bz_bugitem');
-      loading = true;
       for (var i = rows.length - 1; i >= 0; i--) {
         // Extract the bug id from the link in the first cell in this row
         var bugId = rows[i].cells[0].getElementsByTagName('a')[0].innerHTML;
@@ -243,32 +229,24 @@
         if (typeof (jsonUpdate[bugId]) == 'undefined') 
           continue;
 
-        var updatesForThisBug = jsonUpdate[bugId];
-
-        // Print the JSON to the console, for reference
-        console.log(bugId + ': ');
-        console.log(updatesForThisBug.length);
-
         // Parse the update from the server and update the corresponding UI
         // elements
-        for (fieldName in updatesForThisBug) {
-          var fieldValue = updatesForThisBug[fieldName];
-          console.log('name: ' + fieldName);
-          console.log('value: ' + fieldValue);
+        var bugUpdates = jsonUpdate[bugId];
 
-          if (fieldName == 'priority') {
-            document.getElementById(bugId + ' ' + fieldValue).checked = true;
-            // toggle the other priorities based on this one
-            togglePriorities.apply(
-              document.getElementById(bugId + ' ' + fieldValue));
-          }
-          // For other types of input (right now only textarea and text), the 
-          // value is the content in the input element.
-          else
-            document.getElementById(bugId + ' ' + fieldName).value = fieldValue;
+        if (bugUpdates['priority'] != 'normal') {
+          var inputElementId = bugId + ' ' + bugUpdates['priority'];
+          document.getElementById(inputElementId).checked = true;
+          // toggle the other priorities based on this one
+          togglePriorities.apply(document.getElementById(inputElementId));
         }
+
+        if (bugUpdates['trackingBugId'] != '-1')
+          document.getElementById(bugId + ' trackingBugId').value = 
+            bugUpdates['trackingBugId'];
+        
+        document.getElementById(bugId + ' comments').value =
+          bugUpdates['comments'];
       }
-      loading = false;
 
       // Clears inputs for a bug.
       function clearInputElements(bugId) {
@@ -316,7 +294,7 @@
         addColumn(PRIORITIES[i],'checkbox');
 
     // Additional support fields
-    addColumn('tracking_bug_id','text');
+    addColumn('trackingBugId','text');
     addColumn('comments','textarea');
 
     // LOAD STATE
