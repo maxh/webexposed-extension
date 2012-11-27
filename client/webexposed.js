@@ -26,6 +26,9 @@
   var SEND_UPDATE_INTERVAL = 2; // in seconds
   var SERVER_URL = 'http://webexposedextension.appspot.com';
 
+  // Should hidden bugs be displayed?
+  var displayHiddenBugs = false;
+
   /**
    * Adds a column corresponding an attribute of a bug.
    * @param {string} name This is the name of the column to add.
@@ -190,12 +193,18 @@
    */
   function requestUpdate()
   {
-    var request = new XMLHttpRequest();
     console.log('about to send get request');
-    request.open('GET', SERVER_URL + '/state', 
-      true);
+
+    var request = new XMLHttpRequest(),
+        url = SERVER_URL + '/state';
+
+    if (displayHiddenBugs)
+      url += '?shbd=0';
+
     request.onreadystatechange = loadUpdate;
+    request.open('GET', url, true);
     request.send(null);
+
     console.log('request sent');
 
     function loadUpdate() {
@@ -203,13 +212,45 @@
       if(request.readyState != 4)
         return;
 
-      jsonUpdate = eval('('+request.responseText+')');
+      jsonUpdate = JSON.parse(request.responseText);
+
+      // The _hidden array will be sorted, but in reverse order. Apply a binary
+      // search to determine whether entries are listed in there.
+      var entryCountInHiddenArray = jsonUpdate['_hidden'].length;
+      function hiddenArrayContainsBugId(bugId) {
+        if (entryCountInHiddenArray == 0)
+          return false;
+
+        var firstIndex = 0, lastIndex = entryCountInHiddenArray - 1,
+            middle = Math.floor((lastIndex - firstIndex) / 2);
+
+        while (jsonUpdate['_hidden'][middle] != bugId &&
+               firstIndex < lastIndex) {
+          if (bugId > jsonUpdate['_hidden'][middle])
+            lastIndex = middle - 1;
+          else if (bugId < jsonUpdate['_hidden'][middle])
+            firstIndex = middle + 1;
+
+          middle = Math.floor((lastIndex + firstIndex) / 2);
+        }
+
+        return jsonUpdate['_hidden'][middle] == bugId;
+      }
+
 
       // Examine each bug and find its entry in the JSON object, if any
       var rows = document.getElementsByClassName('bz_bugitem');
       for (var i = rows.length - 1; i >= 0; i--) {
         // Extract the bug id from the link in the first cell in this row
         var bugId = rows[i].cells[0].getElementsByTagName('a')[0].innerHTML;
+
+        // Bail out more quickly if this bug is hidden per the summarized array.
+        if (hiddenArrayContainsBugId(parseInt(bugId, 10))) {
+          var inputElement = document.getElementById(bugId + ' hidden');
+          inputElement.checked = true;
+          togglePriorities.apply(inputElement);
+          continue;
+        }
 
         // If the update has no information on this bug, we clear its inputs
         if (typeof (jsonUpdate[bugId]) == 'undefined') 
@@ -233,6 +274,10 @@
         document.getElementById(bugId + ' comments').value =
           bugUpdates['comments'];
       }
+
+      document.body.classList.remove('webexposed_display_hidden_bugs');
+      if (displayHiddenBugs)
+        document.body.classList.add('webexposed_display_hidden_bugs');
     }
   }
 
@@ -256,6 +301,23 @@
       t = setTimeout(sync, SYNC_INTERVAL*1000*60);
     }
   };
+
+  /**
+   * Toggle whether hidden bugs should be displayed in the overview. This will
+   * re-request the bug status from the server.
+   */
+  function toggleDisplayOfHiddenBugs() {
+    displayHiddenBugs = !displayHiddenBugs;
+    requestUpdate();
+  }
+
+  var bugCountElement = document.querySelector('.bz_result_count'),
+      anchorElement = document.createElement('a');
+
+  anchorElement.href = '#';
+  anchorElement.textContent = 'Toggle display of hidden bugs.';
+  anchorElement.onclick = toggleDisplayOfHiddenBugs;
+  bugCountElement.appendChild(anchorElement);
 
   // Only run the extension on the WebExposed bug list
   if (document.URL.indexOf('keywords=WebExposed') != -1) {

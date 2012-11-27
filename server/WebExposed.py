@@ -50,12 +50,18 @@ class RequestStateHandler(webapp2.RequestHandler):
   with an object for each bug that has entered state."""
   def get(self):
     self.response.headers['Content-Type'] = 'text/plain'
+    skip_hidden_bug_data = self.request.get('shbd', '1')
 
-    bug_output_list = {}
+    bug_output_list = {'_hidden': []}
     bug_list = Bug.Bug.List()
 
     # Compose the output list for all the bugs.
     for bug in bug_list:
+      # Don't send a full object if we're not interested in it.
+      if skip_hidden_bug_data == '1' and bug.priority == 'hidden':
+        bug_output_list['_hidden'].append(bug.bug_id)
+        continue
+
       bug_output_list[bug.bug_id] = {
         "priority": bug.priority,
         "trackingBugId": bug.tracking_bug_id,

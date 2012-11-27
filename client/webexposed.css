@@ -9,10 +9,18 @@ th.webexposed {
   ext-transform: capitalize;
 }
 
+tr.webexposed_row_priority_hidden {
+  display: none;
+}
+
 tr.webexposed_row_priority_hidden td {
   color: gray;
 }
 
 tr.webexposed_row_priority_important td {
   background-color: rgb(204,255,204);
+}
+
+.webexposed_display_hidden_bugs tr.webexposed_row_priority_hidden {
+  display: table-row;
 }
