@@ -6,7 +6,7 @@
 
 th.webexposed { 
   background-color: rgba(175,238,238,0.2);
-  ext-transform: capitalize;
+  text-transform: capitalize;
 }
 
 tr.webexposed_row_priority_hidden {
@@ -18,7 +18,16 @@ tr.webexposed_row_priority_hidden td {
 }
 
 tr.webexposed_row_priority_important td {
+  background-color: rgb(135,206,250);
+}
+
+tr.webexposed_row_priority_important.webexposed_row_ltbug_true td {
   background-color: rgb(204,255,204);
+}
+
+td.webexposed.trackingBugId input {
+  width: 40%;
+  margin-right: 5px;
 }
 
 .webexposed_display_hidden_bugs tr.webexposed_row_priority_hidden {
