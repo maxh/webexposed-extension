@@ -29,6 +29,14 @@
   // Should hidden bugs be displayed?
   var displayHiddenBugs = false;
 
+  // Helper method to generate links for tracking bugs
+  var linkFactory = function(wkBugId) {
+    return function(){
+      var crBugId = document.getElementById(wkBugId + ' trackingBugId').value;
+      crBugId = parseInt(crBugId);
+      location.href = 'http://crbug.com/' + crBugId;
+    }
+  };
   /**
    * Adds a column corresponding an attribute of a bug.
    * @param {string} name This is the name of the column to add.
@@ -65,33 +73,44 @@
 
       for (var j = 0; j < COLUMNS.length; j++) {
         var td = document.createElement('td');
-        td.className = 'webexposed ' + COLUMNS[j];
+        var colName = COLUMNS[j];
+        td.className = 'webexposed ' + colName;
 
         var input;
 
-        switch(COLUMNS[j]) {
+        // Which input element we decide to use depends on the col
+        switch(colName) {
           case 'comments':
             input = document.createElement('textarea');
-            break;
+          break;
           case 'hidden': case 'important':
             input = document.createElement('input');
             input.type = 'checkbox';
             input.addEventListener('change',togglePriorities);
-            break;
+          break;
           case 'trackingBugId':
+            // button to quickly go to the crbug tracking bug
+            var goButton = document.createElement('button');
+            goButton.innerHTML = 'go!';
+            goButton.id = bugId + ' ' + colName + ' goButton';
+            goButton.addEventListener('click',linkFactory(bugId));
+            goButton.style.display = 'none';
+            td.appendChild(goButton);
+            // input element to change crbug
             input = document.createElement('input');
+            input.addEventListener('input',trackingBugUpdate);
             input.type = 'text';
-            break;
+          break;
         }
 
         input.addEventListener('change',storeUpdate);
         input.addEventListener('input',storeUpdate);
-    
-        input.id = bugId + ' ' + COLUMNS[j];      
-        input.name = COLUMNS[j];
+
+        input.id = bugId + ' ' + colName;      
+        input.name = colName;
         input.className = 'webexposed ' + bugId;
 
-        td.appendChild(input);
+        td.insertBefore(input,td.firstChild);
         rows[i].appendChild(td);
       }
     }
@@ -106,13 +125,14 @@
     var inputName = this.id.split(' ')[1];
     var value = '';
     var name = '';
+    var link = '';
 
-    // For each checkbox, the value is a boolean (where true means checked).
     switch(this.name) {
       case 'trackingBugId':
         name = 'trackingBugId';
         value = parseInt(this.value);
         break; 
+      // For each checkbox, the value is a boolean (where true means checked).
       case 'hidden': case 'important':
         name = 'priority';
         // If the check box is unchecked, return the priority to 'normal'
@@ -125,15 +145,34 @@
     }
 
     // Create an entry in the update for this bug if none exists.
-    if (typeof (update[bugId] == 'undefined'))
+    if (typeof (update[bugId]) == 'undefined')
       update[bugId] = {};
 
     // Store the value to the JSON.
     update[bugId][name] = value;
   }
 
+  function trackingBugUpdate() {
+    var bugId = this.id.split(' ')[0]; // ids on inputs are like '{id} {name}'
+    var goButton = document.getElementById(bugId + ' trackingBugId goButton');
+    
+    // Change color of row by changing CSS class
+    var row = document.getElementsByClassName('webexposed_row_' + bugId)[0];
+    // Remove the old priority class
+    row.className = 
+      row.className.replace(/webexposed_row_ltbug_[a-z]+ */,'');
+    
+    if (Number.isNaN(parseInt(this.value))) {
+      goButton.style.display = 'none';
+    }
+    else {
+      goButton.style.display = '';
+      row.className = row.className + ' webexposed_row_ltbug_true';
+    }
+  }
+
   function togglePriorities() {
-    var bugId = this.id.split(' ')[0]; // ids are like '{id} {name}'
+    var bugId = this.id.split(' ')[0]; // ids on inputs are like '{id} {name}'
     var name = this.id.split(' ')[1]; // {'important','hidden'}
     var priority = this.checked ? name : 'normal';
 
@@ -267,9 +306,12 @@
           togglePriorities.apply(document.getElementById(inputElementId));
         }
 
-        if (bugUpdates['trackingBugId'] != '-1')
+        if (bugUpdates['trackingBugId'] != '-1') {
           document.getElementById(bugId + ' trackingBugId').value = 
             bugUpdates['trackingBugId'];
+          trackingBugUpdate.apply(
+            document.getElementById(bugId + ' trackingBugId'));
+        }
         
         document.getElementById(bugId + ' comments').value =
           bugUpdates['comments'];
